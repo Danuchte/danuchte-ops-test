@@ -9,18 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Run sanity script
         run: |
-          echo "OpenClaw operator test — $(date -u)"
+          echo "OpenClaw operator test — run at $(date -u)"
           uname -a
           df -h
-
       - name: Notify webhook
-        env:
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
-          curl -sS -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"status\":\"success\",\"branch\":\"$GITHUB_REF_NAME\",\"sha\":\"$GITHUB_SHA\"}" \
-            "${WEBHOOK_URL:-http://localhost:5678/webhook/github-push}"
+          curl -sS -X POST -H "Content-Type: application/json" -d "{\"status\":\"success\",\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}" "https://example-webhook.example/webhook"
