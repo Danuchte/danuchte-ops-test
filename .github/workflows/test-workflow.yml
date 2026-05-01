@@ -5,15 +5,39 @@ on:
     branches: [main, master]
 
 jobs:
-  build:
+  build-and-notify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Run sanity script
         run: |
-          echo "OpenClaw operator test — run at $(date -u)"
+          echo "OpenClaw operator test — $(date -u)"
           uname -a
           df -h
-      - name: Notify webhook
+
+      - name: Notify Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          curl -sS -X POST -H "Content-Type: application/json" -d "{\"status\":\"success\",\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}" "https://example-webhook.example/webhook"
+          MSG="🔧 GitHub Push
+          ━━━━━━━━━━━━━━━━━━
+          📦 Repo: ${{ github.repository }}
+          🌿 Branch: ${{ github.ref_name }}
+          🔑 SHA: ${{ github.sha }}
+          👤 Author: ${{ github.actor }}
+          🕐 Time: $(date -u '+%Y-%m-%d %H:%M UTC')
+          ━━━━━━━━━━━━━━━━━━"
+          curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${MSG}"
+
+      - name: Notify n8n webhook
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+        if: env.N8N_WEBHOOK_URL != ''
+        run: |
+          curl -sS -X POST "${N8N_WEBHOOK_URL}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"success","repo":"${{ github.repository }}","branch":"${{ github.ref_name }}","sha":"${{ github.sha }}","actor":"${{ github.actor }}"}'
